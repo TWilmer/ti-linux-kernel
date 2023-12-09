@@ -120,6 +120,11 @@
 #define CDNS_PCIE_LM_PTM_CTRL	(CDNS_PCIE_LM_BASE + 0x0da8)
 #define CDNS_PCIE_LM_TPM_CTRL_PTMRSEN	BIT(17)
 
+
+/* SRIS Control Register */
+#define CDNS_PCIE_LM_SRIS_CTRL	(CDNS_PCIE_LM_BASE + 0x0074)
+#define CDNS_PCIE_LM_SRIS_CTRL_SRISE	BIT(1)
+
 /*
  * Endpoint Function Registers (PCI configuration space for endpoint functions)
  */

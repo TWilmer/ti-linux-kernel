@@ -422,31 +422,16 @@
 	disable-wp;
 };
 
-&serdes_ln_ctrl {
-	idle-states = <AM64_SERDES0_LANE0_USB>;
-};
-
-&serdes0 {
-	serdes0_usb_link: phy@0 {
-		reg = <0>;
-		cdns,num-lanes = <1>;
-		#phy-cells = <0>;
-		cdns,phy-type = <PHY_TYPE_USB3>;
-		resets = <&serdes_wiz0 1>;
-	};
-};
-
 &usbss0 {
 	ti,vbus-divider;
+        ti,usb2-only;
 };
 
 &usb0 {
-	dr_mode = "host";
-	maximum-speed = "super-speed";
+	dr_mode = "otg";
+	maximum-speed = "high-speed";
 	pinctrl-names = "default";
-	pinctrl-0 = <&main_usb0_pins_default>;
-	phys = <&serdes0_usb_link>;
-	phy-names = "cdns3,usb3-phy";
+	pinctrl-0 = <&main_usb0_pins_default>;	
 };
 
 &cpsw3g {
@@ -622,6 +607,35 @@
 	mboxes = <&mailbox0_cluster6 &mbox_m4_0>;
 	memory-region = <&mcu_m4fss_dma_memory_region>,
 			<&mcu_m4fss_memory_region>;
+};
+
+&serdes_ln_ctrl {
+	idle-states = <AM64_SERDES0_LANE0_PCIE0>;
+};
+
+&serdes0 {
+	serdes0_pcie_link: phy@0 {
+		reg = <0>;
+		cdns,num-lanes = <1>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_PCIE>;
+		resets = <&serdes_wiz0 1>;
+	};
+};
+
+&pcie0_rc {
+	status = "disabled";
+	reset-gpios = <&exp1 5 GPIO_ACTIVE_HIGH>;
+	phys = <&serdes0_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <1>;
+};
+
+&pcie0_ep {
+        status = "okay";
+	phys = <&serdes0_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <1>;
 };
 
 &ecap0 {

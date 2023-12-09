@@ -37,3 +37,12 @@ config PCI_EPF_VNTB
           between PCI Root Port and PCIe Endpoint.
 
           If in doubt, say "N" to disable Endpoint NTB driver.
+
+config PCI_EPF_XMT
+        tristate "PCI Endpoint XMT driver"
+        depends on PCI_ENDPOINT        
+        select CONFIGFS_FS
+        help
+          Select this configuration option to enable an XMT Driver.
+          
+          If in doubt, say "N" to disable Endpoint XMT driver.		  

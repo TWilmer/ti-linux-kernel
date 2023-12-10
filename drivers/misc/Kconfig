@@ -503,6 +503,14 @@ config VCPU_STALL_DETECTOR
 
 	  If you do not intend to run this kernel as a guest, say N.
 
+config XMT
+	tristate "XMT HostDriver"
+	default m
+	help
+	  Driver to access the xmt Endpoint Driver for PCIe
+
+
+
 config DMA_BUF_PHYS
 	tristate "DMA-BUF physical address user-space exporter"
 	default y

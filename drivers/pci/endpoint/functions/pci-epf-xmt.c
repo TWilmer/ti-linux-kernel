@@ -53,7 +53,7 @@ struct pci_epf_xmt {
 	enum pci_barno		xmt_reg_bar;
 	size_t			msix_table_offset;
 	struct delayed_work	cmd_handler;
-	
+	struct dma_chan		*dma_chan_rx;
 	struct completion	transfer_complete;
 	
 	const struct pci_epc_features *epc_features;
@@ -250,6 +250,51 @@ static void pci_epf_xmt_configure_bar(struct pci_epf *epf,
 	}
 }
 
+struct epf_dma_filter {
+	struct device *dev;
+	u32 dma_mask;
+};
+
+static bool epf_dma_filter_fn(struct dma_chan *chan, void *node)
+{
+	struct epf_dma_filter *filter = node;
+	struct dma_slave_caps caps;
+
+	memset(&caps, 0, sizeof(caps));
+	dma_get_slave_caps(chan, &caps);
+	printk(KERN_INFO "Found Channel with  %d\n",filter->dma_mask  );
+	return chan->device->dev == filter->dev
+		&& (filter->dma_mask & caps.directions);
+}
+
+static int pci_epf_xmt_init_dma_chan(struct pci_epf_xmt *epf_xmt)
+{
+	struct pci_epf *epf = epf_xmt->epf;
+	struct device *dev = &epf->dev;
+	struct epf_dma_filter filter;
+	struct dma_chan *dma_chan;
+	dma_cap_mask_t mask;
+	int ret;
+
+	filter.dev = epf->epc->dev.parent;
+	filter.dma_mask = BIT(DMA_DEV_TO_MEM);
+	printk(KERN_INFO "Searcg DMA with mask %d\n",filter.dma_mask );
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+	dma_chan = dma_request_channel(mask, epf_dma_filter_fn, &filter);
+	if (!dma_chan) {
+		dev_info(dev, "Failed to get private DMA rx channel. Falling back to generic one\n");
+		goto fail_back_tx;
+	}
+
+	epf_xmt->dma_chan_rx = dma_chan;
+	return 0;
+
+fail_back_tx:
+	dev_err(dev, "Failed to get DMA channel\n");
+	return 0;
+}
+
 static int pci_epf_xmt_bind(struct pci_epf *epf)
 {
 	int ret;
@@ -290,12 +335,14 @@ static int pci_epf_xmt_bind(struct pci_epf *epf)
 	}
 
 
-
+	ret = pci_epf_xmt_init_dma_chan(epf_xmt);
 
 	if (linkup_notifier || core_init_notifier) {
+			printk(KERN_INFO "Put Link Up notified\n");
 		epf->nb.notifier_call = pci_epf_xmt_notifier;
 		pci_epc_register_notifier(epc, &epf->nb);
 	} else {
+		printk(KERN_INFO "Start Q directly\n");
 		queue_work(kpcixmt_workqueue, &epf_xmt->cmd_handler.work);
 	}
 
@@ -308,11 +355,24 @@ static int pci_epf_xmt_bind(struct pci_epf *epf)
 
 static void pci_epf_xmt_cmd_handler(struct work_struct *work)
 {
+
+	u32 command;
+	
+        static u32 lastCmd=42;
 	struct pci_epf_xmt *epf_xmt = container_of(work, struct pci_epf_xmt,
 						     cmd_handler.work);
 
-// some how read the command register and do something usefull
 
+	enum pci_barno xmt_reg_bar = epf_xmt->xmt_reg_bar;
+	struct pci_epf_xmt_reg *reg = epf_xmt->reg[xmt_reg_bar];
+	command = reg->command;
+   
+	if(lastCmd!=command){
+		lastCmd=command;
+		printk(KERN_INFO "New Command %d Magic: %d\n", command, reg->magic);
+
+	}
+   
 
 reset_handler:
 	queue_delayed_work(kpcixmt_workqueue, &epf_xmt->cmd_handler,
